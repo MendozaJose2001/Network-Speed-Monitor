@@ -40,9 +40,9 @@ OSError
 import csv
 from pathlib import Path
 from utils.time_manager import TimeManager
+from typing import Optional
 
-
-def _get_csv_path() -> Path:
+def _get_csv_path(file_name: Optional[str]) -> Path:
     """
     Generate a timestamped file path for a new CSV session.
 
@@ -56,9 +56,14 @@ def _get_csv_path() -> Path:
         'data/speed_register_2024-01-15T10-30-45Z.csv'
     """
     DATA_DIR = Path("data")
-    timestamp = TimeManager.get_str_now()
-
-    return DATA_DIR / f"speed_register_{timestamp}.csv"
+    
+    if not file_name:
+        timestamp = TimeManager.get_str_now()
+        file_dir = f"speed_register_{timestamp}.csv"
+    else: 
+        file_dir = file_name
+        
+    return DATA_DIR / file_dir
 
 
 class CSVSession:
@@ -129,7 +134,7 @@ class CSVSession:
             writer.writerow(row)
 
 
-def get_session() -> CSVSession:
+def get_session(file_name: Optional[str] = None) -> CSVSession:
     """
     Instantiate and return a new CSVSession for the current monitoring run.
 
@@ -147,4 +152,4 @@ def get_session() -> CSVSession:
         >>> session = get_session()
         >>> session.write_row({'timestamp': '...', 'download_mbps': '95.4'})
     """
-    return CSVSession(path=_get_csv_path())
+    return CSVSession(path=_get_csv_path(file_name))

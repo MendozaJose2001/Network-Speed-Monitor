@@ -48,15 +48,16 @@ ServerResolutionError
     server ID can be found.
 """
 import re
-from schemas.is_speed_test import LibreSpeedTest, ISpeedTest
+from schemas.is_speed_test import LibreSpeedTest, ISpeedTest, SpeedTestGoTest
 from utils.subproccess_manager import SubProcessManager
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, TypeVar, Generic
 from utils.types import ServerData
 from abc import ABC, abstractmethod
 from utils.exceptions import SpeedTestExecutionError, ServerResolutionError
 
+T = TypeVar('T', bound=ISpeedTest)
 
-class TestSpeedAdapter(ABC):
+class TestSpeedAdapter(ABC,  Generic[T]):
     """
     Abstract interface for speed test adapters.
 
@@ -67,7 +68,7 @@ class TestSpeedAdapter(ABC):
 
     @classmethod
     @abstractmethod
-    def run_a_test(cls) -> ISpeedTest:
+    def run_a_test(cls, server_id: Optional[int] = None) -> T:
         """
         Execute a speed test and return the raw result.
 
@@ -78,8 +79,44 @@ class TestSpeedAdapter(ABC):
             with the raw CLI output.
         """
         pass
+    
+    @classmethod
+    @abstractmethod
+    def find_server_id(cls, record_test: T) -> int:
+        pass
 
-
+class SpeedTestGoAdapter(TestSpeedAdapter):
+    
+    _SUBPROCESS_ARGS_CONFIG: Dict[str, Tuple] = {
+        'speed_test_best_server': ('speedtest-go', '--json'),
+        'speed_test_by_server_id': ('speedtest-go', '--server', None, '--json'),
+    }
+    
+    @classmethod
+    def run_a_test(
+        cls, server_id: Optional[int] = None
+    ) -> SpeedTestGoTest:
+        
+        if server_id:
+            process_args = list(
+                cls._SUBPROCESS_ARGS_CONFIG['speed_test_by_server_id']
+            )
+            process_args[2] = str(server_id)
+            process_args = tuple(process_args)
+        else:
+            process_args = cls._SUBPROCESS_ARGS_CONFIG['speed_test_best_server']
+        
+        process: Dict = SubProcessManager.run_subproccess(process_args)
+        
+        if not isinstance(process, Dict):
+            raise SpeedTestExecutionError("The test did not return a dict")
+        
+        return SpeedTestGoTest(**process)
+    
+    @classmethod
+    def find_server_id(cls, record_test: SpeedTestGoTest) -> int:
+        return int(record_test.get_server()['id'])
+    
 class LibreSpeedAdapter(TestSpeedAdapter):
     """
     Concrete adapter for the LibreSpeed CLI ('librespeed-cli').

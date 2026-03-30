@@ -39,7 +39,7 @@ Usage
     record.get_server()         # {'name': '...', 'url': '...'}
     record.get_up_down_unit()   # 1000000.0
 """
-from typing import ClassVar
+from typing import ClassVar, Dict
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from utils.types import StrFloat
@@ -109,7 +109,70 @@ class ISpeedTest(ABC):
         """
         pass
 
+@dataclass
+class SpeedTestGoTest(ISpeedTest):
+    
+    _UNIT_BYTES_S: ClassVar[float] = 8  # bytes/s → bps
+    _UNIT_NS: ClassVar[float] = 10**-9
+    
+    timestamp: str
+    download: float
+    upload: float
+    jitter: float
+    ping: float
+    max_latency: float
+    min_latency: float
+    client: Dict[str, str]
+    server: Dict[str, StrFloat]
+    test_duration: Dict[str, float]
+    packet_loss: Dict[str, float]
+    
+    def __init__(self, timestamp: str, servers: list, **kwargs) -> None:
+        
+        server_data: Dict = servers[0]
+        
+        self.timestamp = timestamp    
+        self.client = kwargs['user_info']      
+        
+        self.download = float(server_data.pop('dl_speed'))
+        self.upload = float(server_data.pop('ul_speed'))
+        self.jitter = float(server_data.pop('jitter'))
+        self.ping = float(server_data.pop('latency'))
+        self.max_latency = float(server_data.pop('max_latency'))
+        self.min_latency = float(server_data.pop('min_latency'))
+        self.test_duration = server_data.pop('test_duration')
+        self.packet_loss = server_data.pop('packet_loss')
+        
+        self.server = server_data
+            
+    def get_server(self) -> dict[str, str]:
 
+        return {
+            'id' : str(self.server.get('id')),
+            'name': str(self.server.get('name')),
+            'url': str(self.server.get('url')),
+            'country' : str(self.server.get('country')),
+            'sponsor' : str(self.server.get('sponsor')),
+            'host' : str(self.server.get('host'))
+        }
+        
+    def get_client(self) -> dict[str, str]:
+        
+        return {
+            'ip': str(self.client.get('IP')),
+            'isp': str(self.client.get('Isp'))
+        }
+        
+    @classmethod
+    def get_up_down_unit(cls) -> float:
+        
+        return cls._UNIT_BYTES_S
+    
+    @classmethod
+    def get_time_unit(cls) -> float:
+
+        return cls._UNIT_NS
+        
 @dataclass
 class LibreSpeedTest(ISpeedTest):
     """

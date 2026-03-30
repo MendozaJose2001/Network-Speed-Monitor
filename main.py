@@ -36,15 +36,17 @@ in a single run. Each run produces one uniquely timestamped CSV file
 in the data/ directory. See infrastructure/database/csv_session.py
 for details on session file naming.
 """
-from core.speed_test_service import LibreSpeedService
+from core.speed_test_service import NetworkSpeedService
+from infrastructure.adapters.libre_speed_adapter import LibreSpeedAdapter, SpeedTestGoAdapter
 from infrastructure.database.csv_session import get_session
 from infrastructure.repository.csv_repository import TestRepository
 from utils.time_manager import TimeManager
 
 
 # Compose the full dependency graph once at import time.
-app = LibreSpeedService(
-    TestRepository(get_session())
+app = NetworkSpeedService(
+    TestRepository(get_session(file_name='speed_register_2026-03-29T02-17-53Z.csv')),
+    SpeedTestGoAdapter
 )
 
 
